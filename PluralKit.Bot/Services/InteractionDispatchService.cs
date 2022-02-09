@@ -4,6 +4,8 @@ using NodaTime;
 
 using Serilog;
 
+using PluralKit.Core;
+
 namespace PluralKit.Bot;
 
 public class InteractionDispatchService: IDisposable
@@ -38,7 +40,14 @@ public class InteractionDispatchService: IDisposable
         if (!_handlers.TryGetValue(customIdGuid, out var handler))
             return false;
 
-        await handler.Callback.Invoke(context);
+        try
+        {
+            await handler.Callback.Invoke(context);
+        }
+        catch (PKError e)
+        {
+            await context.Reply($"{Emojis.Error} {e.Message}");
+        }
         return true;
     }
 

@@ -9,5 +9,10 @@ public record MessageComponent
     public string? CustomId { get; init; }
     public string? Url { get; init; }
     public bool? Disabled { get; init; }
+    public bool? Required { get; init; }
+    public int? MinLength { get; init; }
+    public int? MaxLength { get; init; }
+    public string? Placeholder { get; init; }
+    public string? Value { get; init; }
     public MessageComponent[]? Components { get; init; }
 }

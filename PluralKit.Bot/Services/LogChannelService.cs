@@ -47,15 +47,36 @@ public class LogChannelService
         var member = await _repo.GetMember(proxiedMessage.Member!.Value);
 
         // Send embed!
-        var embed = _embed.CreateLoggedMessageEmbed(trigger, hookMessage, system.Hid, member, triggerChannel.Name,
+        var embed = _embed.CreateLoggedMessageEmbed(trigger.Author, trigger.Id, hookMessage, system.Hid, member, triggerChannel.Name,
             oldContent);
         var url =
             $"https://discord.com/channels/{proxiedMessage.Guild.Value}/{proxiedMessage.Channel}/{proxiedMessage.Mid}";
         await _rest.CreateMessage(logChannelId.Value, new MessageRequest { Content = url, Embed = embed });
     }
 
-    private async Task<ulong?> GetAndCheckLogChannel(MessageContext ctx, Message trigger,
-                                                       PKMessage proxiedMessage)
+    // This method is used to log an edited message when there is no source message (i.e. when editing with slash commands)
+    public async ValueTask LogEditedMessage(FullMessage proxiedMessage, Message hookMessage, User sender, string oldContent)
+    {
+        var triggerChannel = await _cache.GetChannel(proxiedMessage.Message.Channel);
+
+        var guild = await _repo.GetGuild(proxiedMessage.Message.Guild.Value);
+        var logChannelId = guild.LogChannel;
+        var isBlacklisted = guild.LogBlacklist.Any(x => x == proxiedMessage.Message.Channel);
+
+        if (isBlacklisted)
+            logChannelId = null;
+        else if (logChannelId != null)
+            logChannelId = await GetAndCheckLogChannelInner(logChannelId.Value, guild.Id);
+
+        // Send embed!
+        var embed = _embed.CreateLoggedMessageEmbed(sender, proxiedMessage.Message.OriginalMid.Value, hookMessage, proxiedMessage.System.Hid, proxiedMessage.Member, triggerChannel.Name,
+            oldContent);
+        var url =
+            $"https://discord.com/channels/{proxiedMessage.Message.Guild.Value}/{proxiedMessage.Message.Channel}/{proxiedMessage.Message.Mid}";
+        await _rest.CreateMessage(logChannelId.Value, new MessageRequest { Content = url, Embed = embed });
+    }
+
+    private async Task<ulong?> GetAndCheckLogChannel(MessageContext ctx, Message trigger, PKMessage proxiedMessage)
     {
         if (proxiedMessage.Guild == null && proxiedMessage.Channel != trigger.ChannelId)
             // a very old message is being edited outside of its original channel
@@ -75,9 +96,14 @@ public class LogChannelService
         }
 
         if (ctx.SystemId == null || logChannelId == null || isBlacklisted) return null;
+        
+        return await GetAndCheckLogChannelInner(logChannelId.Value, trigger.GuildId.Value);
+    }
 
+    private async Task<ulong?> GetAndCheckLogChannelInner(ulong logChannelId, ulong guildId)
+    {
         // Find log channel and check if valid
-        var logChannel = await FindLogChannel(guildId, logChannelId.Value);
+        var logChannel = await FindLogChannel(guildId, logChannelId);
         if (logChannel == null || logChannel.Type != Channel.ChannelType.GuildText) return null;
 
         // Check bot permissions
@@ -86,7 +112,7 @@ public class LogChannelService
         {
             _logger.Information(
                 "Does not have permission to log proxy, ignoring (channel: {ChannelId}, guild: {GuildId}, bot permissions: {BotPermissions})",
-                ctx.LogChannel.Value, trigger.GuildId!.Value, perms);
+                logChannelId, guildId, perms);
             return null;
         }
 

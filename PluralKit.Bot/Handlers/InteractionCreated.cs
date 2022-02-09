@@ -18,13 +18,22 @@ public class InteractionCreated: IEventHandler<InteractionCreateEvent>
 
     public async Task Handle(int shardId, InteractionCreateEvent evt)
     {
-        if (evt.Type == Interaction.InteractionType.MessageComponent)
+        if (evt.Type == Interaction.InteractionType.MessageComponent || evt.Type == Interaction.InteractionType.ModalSubmit)
         {
             var customId = evt.Data?.CustomId;
             if (customId != null)
             {
                 var ctx = new InteractionContext(evt, _services);
                 await _interactionDispatch.Dispatch(customId, ctx);
+            }
+        }
+        else if (evt.Type == Interaction.InteractionType.ApplicationCommand)
+        {
+            var ctx = new InteractionContext(evt, _services);
+            switch (evt.Data.Name) {
+                case "Edit Message":
+                    await _services.Resolve<MessageInteraction>().HandleMessageEdit(ctx);
+                    break;
             }
         }
     }

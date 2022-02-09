@@ -23,6 +23,7 @@ public class InteractionContext
     public GuildMember? Member => Event.Member;
     public User User => Event.Member?.User ?? Event.User;
     public string Token => Event.Token;
+    public ApplicationCommandInteractionData? Data => Event.Data;
     public string? CustomId => Event.Data?.CustomId;
 
     public async Task Reply(string content)

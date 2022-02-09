@@ -6,10 +6,13 @@ public record Interaction
     {
         Ping = 1,
         ApplicationCommand = 2,
-        MessageComponent = 3
+        MessageComponent = 3,
+        Autocomplete = 4,
+        ModalSubmit = 5,
     }
 
     public ulong Id { get; init; }
+    public string? Name { get; init; }
     public InteractionType Type { get; init; }
     public ApplicationCommandInteractionData? Data { get; init; }
     public ulong GuildId { get; init; }

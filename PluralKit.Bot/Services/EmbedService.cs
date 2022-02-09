@@ -122,7 +122,7 @@ public class EmbedService
         return eb.Build();
     }
 
-    public Embed CreateLoggedMessageEmbed(Message triggerMessage, Message proxiedMessage, string systemHid,
+    public Embed CreateLoggedMessageEmbed(User sender, ulong originalMid, Message proxiedMessage, string systemHid,
                                           PKMember member, string channelName, string oldContent = null)
     {
         // TODO: pronouns in ?-reacted response using this card
@@ -137,7 +137,7 @@ public class EmbedService
             .Thumbnail(new Embed.EmbedThumbnail(avatar))
             .Description(proxiedMessage.Content?.NormalizeLineEndSpacing())
             .Footer(new Embed.EmbedFooter(
-                $"System ID: {systemHid} | Member ID: {member.Hid} | Sender: {triggerMessage.Author.Username}#{triggerMessage.Author.Discriminator} ({triggerMessage.Author.Id}) | Message ID: {proxiedMessage.Id} | Original Message ID: {triggerMessage.Id}"))
+                $"System ID: {systemHid} | Member ID: {member.Hid} | Sender: {sender.Username}#{sender.Discriminator} ({sender.Id}) | Message ID: {proxiedMessage.Id} | Original Message ID: {originalMid}"))
             .Timestamp(timestamp.ToDateTimeOffset().ToString("O"));
 
         if (oldContent != null)
