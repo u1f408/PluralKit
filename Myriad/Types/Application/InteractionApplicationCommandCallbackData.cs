@@ -30,4 +30,7 @@ public record InteractionApplicationCommandCallbackData
 
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public Optional<string>? Title { get; init; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public Optional<ApplicationCommandOption.Choice[]>? Choices { get; init; }
 }
