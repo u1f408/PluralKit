@@ -96,7 +96,7 @@ public class LogChannelService
         }
 
         if (ctx.SystemId == null || logChannelId == null || isBlacklisted) return null;
-        
+
         return await GetAndCheckLogChannelInner(logChannelId.Value, trigger.GuildId.Value);
     }
 

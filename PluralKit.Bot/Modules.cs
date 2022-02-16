@@ -96,6 +96,7 @@ public class BotModule: Module
         builder.RegisterType<SystemList>().AsSelf();
 
         // Interaction commands
+        builder.RegisterType<Autocompletion>().AsSelf();
         builder.RegisterType<MessageInteraction>().AsSelf();
 
         // Bot core

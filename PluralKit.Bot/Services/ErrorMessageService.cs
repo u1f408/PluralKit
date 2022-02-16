@@ -46,7 +46,7 @@ public class ErrorMessageService
     {
         var now = SystemClock.Instance.GetCurrentInstant();
         var embed = GenerateEmbed(now, errorId);
-        
+
         // this is dumb
         // apparently there's no way to send a message to an interaction without knowing if it's been responded to already
         // so we try to followup, then if that fails, we send an interaction response

@@ -15,7 +15,7 @@ public class MessageInteraction
     private readonly WebhookExecutorService _hook;
     private readonly LogChannelService _logChannel;
 
-    public MessageInteraction(InteractionDispatchService interactionDispatch, DiscordApiClient rest, 
+    public MessageInteraction(InteractionDispatchService interactionDispatch, DiscordApiClient rest,
         IDatabase db, ModelRepository repo, WebhookExecutorService hook, LogChannelService logChannel)
     {
         _interactionDispatch = interactionDispatch;
@@ -48,10 +48,10 @@ public class MessageInteraction
         var id = _interactionDispatch.Register((ctx) => HandleMessageEditCallback(ctx, pkMessage.Message.Mid));
 
         await ctx.Respond(InteractionResponse.ResponseType.Modal, new()
-            {
-                CustomId = id,
-                Title = "Edit Message",
-                Components = new MessageComponent[]
+        {
+            CustomId = id,
+            Title = "Edit Message",
+            Components = new MessageComponent[]
                 {
                     new()
                     {
@@ -73,7 +73,7 @@ public class MessageInteraction
                         }
                     }
                 }
-            }
+        }
         );
     }
 

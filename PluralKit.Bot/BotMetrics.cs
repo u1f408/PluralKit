@@ -31,6 +31,14 @@ public static class BotMetrics
         Context = "Bot"
     };
 
+    public static MeterOptions AppCommandsRun => new()
+    {
+        Name = "Application Commands run",
+        MeasurementUnit = Unit.Commands,
+        RateUnit = TimeUnit.Seconds,
+        Context = "Bot"
+    };
+
     public static TimerOptions CommandTime => new()
     {
         Name = "Command run time",
