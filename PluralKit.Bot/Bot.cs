@@ -222,6 +222,14 @@ public class Bot
                 return;
 
             // Once we've sent it to Sentry, report it to the user (if we have permission to)
+
+            if (evt is InteractionCreateEvent interaction)
+            {
+                var ctx = new InteractionContext(interaction, null, _services);
+                await _errorMessageService.SendErrorMessage(interaction, sentryEvent.EventId.ToString());
+                return;
+            }
+
             var reportChannel = handler.ErrorChannelFor(evt, ourUserId);
             if (reportChannel == null)
                 return;
