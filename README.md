@@ -67,6 +67,14 @@ If you run the bot manually you can run the worker as such:
 * `dotnet run --project PluralKit.ScheduledTasks`
 * or if you used `dotnet build` rather than `dotnet run` to run the bot: `dotnet build/PluralKit.ScheduledTasks.dll`
 
+## Slash commands
+
+if you don't want to use slash commands with your PluralKit instance, feel free to skip this section - it's completely optional.
+
+todo: make this better
+
+command definitions are stored as Typescript in `app_commands/`. you can use the script `update.ts` (**read it first**) to generate and upload command definitions to Discord, or take the default export of `commands.ts` and convert it to JSON - it's directly compatible with Discord's bulk command update endpoint.
+
 # Upgrading database from legacy version
 If you have an instance of the Python version of the bot (from the `legacy` branch), you may need to take extra database migration steps.
 For more information, see [LEGACYMIGRATE.md](./LEGACYMIGRATE.md).
