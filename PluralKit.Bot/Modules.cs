@@ -33,6 +33,7 @@ public class BotModule: Module
                 GatewayQueueUrl = botConfig.GatewayQueueUrl,
                 UseRedisRatelimiter = botConfig.UseRedisRatelimiter,
                 Intents = GatewayIntent.Guilds |
+                          GatewayIntent.GuildMembers |
                           GatewayIntent.DirectMessages |
                           GatewayIntent.DirectMessageReactions |
                           GatewayIntent.GuildEmojis |
@@ -104,6 +105,7 @@ public class BotModule: Module
         builder.RegisterType<MessageEdited>().As<IEventHandler<MessageUpdateEvent>>();
         builder.RegisterType<ReactionAdded>().As<IEventHandler<MessageReactionAddEvent>>();
         builder.RegisterType<InteractionCreated>().As<IEventHandler<InteractionCreateEvent>>();
+        builder.RegisterType<GuildMemberRemoved>().As<IEventHandler<GuildMemberRemoveEvent>>();
 
         // Event handler queue
         builder.RegisterType<HandlerQueue<MessageCreateEvent>>().AsSelf().SingleInstance();

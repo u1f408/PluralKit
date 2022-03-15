@@ -16,6 +16,7 @@ public class PKControllerBase: ControllerBase
     protected readonly IDatabase _db;
     protected readonly ModelRepository _repo;
     protected readonly DispatchService _dispatch;
+    protected readonly RedisService _redis;
 
     public PKControllerBase(IServiceProvider svc)
     {
@@ -23,16 +24,34 @@ public class PKControllerBase: ControllerBase
         _db = svc.GetRequiredService<IDatabase>();
         _repo = svc.GetRequiredService<ModelRepository>();
         _dispatch = svc.GetRequiredService<DispatchService>();
+        _redis = svc.GetRequiredService<RedisService>();
+    }
+
+    protected SystemId? authenticatedSystem
+    {
+        get
+        {
+            HttpContext.Items.TryGetValue("SystemId", out var systemId);
+            return (SystemId?)systemId;
+        }
+    }
+
+    protected ulong? authenticatedUser
+    {
+        get
+        {
+            HttpContext.Items.TryGetValue("UserId", out var userId);
+            return (ulong?)userId;
+        }
     }
 
     protected Task<PKSystem?> ResolveSystem(string systemRef)
     {
         if (systemRef == "@me")
         {
-            HttpContext.Items.TryGetValue("SystemId", out var systemId);
-            if (systemId == null)
+            if (authenticatedSystem == null)
                 throw Errors.GenericAuthError;
-            return _repo.GetSystem((SystemId)systemId);
+            return _repo.GetSystem(authenticatedSystem.Value);
         }
 
         if (Guid.TryParse(systemRef, out var guid))
@@ -71,22 +90,19 @@ public class PKControllerBase: ControllerBase
 
     protected LookupContext ContextFor(PKSystem system)
     {
-        HttpContext.Items.TryGetValue("SystemId", out var systemId);
-        if (systemId == null) return LookupContext.ByNonOwner;
-        return (SystemId)systemId == system.Id ? LookupContext.ByOwner : LookupContext.ByNonOwner;
+        if (authenticatedSystem == null) return LookupContext.ByNonOwner;
+        return authenticatedSystem == system.Id ? LookupContext.ByOwner : LookupContext.ByNonOwner;
     }
 
     protected LookupContext ContextFor(PKMember member)
     {
-        HttpContext.Items.TryGetValue("SystemId", out var systemId);
-        if (systemId == null) return LookupContext.ByNonOwner;
-        return (SystemId)systemId == member.System ? LookupContext.ByOwner : LookupContext.ByNonOwner;
+        if (authenticatedSystem == null) return LookupContext.ByNonOwner;
+        return authenticatedSystem == member.System ? LookupContext.ByOwner : LookupContext.ByNonOwner;
     }
 
     protected LookupContext ContextFor(PKGroup group)
     {
-        HttpContext.Items.TryGetValue("SystemId", out var systemId);
-        if (systemId == null) return LookupContext.ByNonOwner;
-        return (SystemId)systemId == group.System ? LookupContext.ByOwner : LookupContext.ByNonOwner;
+        if (authenticatedSystem == null) return LookupContext.ByNonOwner;
+        return authenticatedSystem == group.System ? LookupContext.ByOwner : LookupContext.ByNonOwner;
     }
 }

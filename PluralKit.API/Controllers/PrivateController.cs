@@ -1,7 +1,11 @@
+using System.Security.Cryptography;
+
 using Microsoft.AspNetCore.Mvc;
 
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+
+using StackExchange.Redis;
 
 using PluralKit.Core;
 
@@ -18,11 +22,7 @@ namespace PluralKit.API;
 [Route("private")]
 public class PrivateController: PKControllerBase
 {
-    private readonly RedisService _redis;
-    public PrivateController(IServiceProvider svc) : base(svc)
-    {
-        _redis = svc.GetRequiredService<RedisService>();
-    }
+    public PrivateController(IServiceProvider svc) : base(svc) { }
 
     [HttpGet("meta")]
     public async Task<ActionResult<JObject>> Meta()
@@ -46,6 +46,79 @@ public class PrivateController: PKControllerBase
 
         return Ok(o);
     }
+
+    [HttpGet("oauth2/callback")]
+    public async Task<IActionResult> OAuth2Callback([FromQuery] string code)
+    {
+        using var client = new HttpClient();
+
+        var res = await client.PostAsync("https://discord.com/api/v10/oauth2/token", new FormUrlEncodedContent(
+            new Dictionary<string, string>{
+            { "client_id", _config.ClientId },
+            { "client_secret", _config.ClientSecret },
+            { "grant_type", "authorization_code" },
+            { "redirect_uri", "http://localhost:5000/private/oauth2/callback" },
+            { "code", code },
+        }));
+
+        if (!res.IsSuccessStatusCode) {
+            return BadRequest(1);
+        }
+
+        var c = JsonConvert.DeserializeObject<OAuth2TokenResponse>(await res.Content.ReadAsStringAsync());
+
+        if (c.access_token == null)
+            return BadRequest(2);
+
+        client.DefaultRequestHeaders.Add("Authorization", $"Bearer {c.access_token}");
+
+        var resp = await client.GetAsync("https://discord.com/api/v10/users/@me");
+        Console.WriteLine(await resp.Content.ReadAsStringAsync());
+        var user = JsonConvert.DeserializeObject<JObject>(await resp.Content.ReadAsStringAsync());
+        var userId = user.Value<String>("id");
+
+        var system = await ResolveSystem(userId);
+        if (system == null)
+            return NotFound();
+
+        resp = await client.GetAsync("https://discord.com/api/v10/users/@me/guilds");
+        var guilds = JsonConvert.DeserializeObject<JArray>(await resp.Content.ReadAsStringAsync());
+        await _redis.Connection.GetDatabase().HashSetAsync(
+            $"user_guilds::{userId}",
+            guilds.Select(g => new HashEntry(g.Value<string>("id"), true)).ToArray()
+        );
+
+        var o = new JObject();
+
+        // todo: generate system token if it's missing
+
+        o.Add("system", system.ToJson(LookupContext.ByOwner, APIVersion.V2));
+        o.Add("user", user);
+        o.Add("token", Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(GetSignedToken(userId, system.Token))));
+
+        return Ok(o);
+    }
+
+    private string gethex(byte[] src) => string.Concat(Array.ConvertAll(src, b => b.ToString("x")));
+
+    private string GetSignedToken(string userId, string token)
+    {
+        var data = $"{userId}:{token}";
+
+        using (var shaAlgorithm = new HMACSHA256(Convert.FromBase64String(_config.JwtSigningToken)))
+        {
+            var signatureBytes = System.Text.Encoding.UTF8.GetBytes(data);
+            var signatureHashBytes = shaAlgorithm.ComputeHash(signatureBytes);
+            var signatureHashHex = gethex(signatureHashBytes);
+
+            return $"{data}:{signatureHashHex}";
+        }
+    }
+}
+
+public record OAuth2TokenResponse
+{
+    public string access_token;
 }
 
 public static class PrivateJsonExt

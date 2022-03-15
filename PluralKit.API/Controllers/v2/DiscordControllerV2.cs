@@ -17,7 +17,10 @@ public class DiscordControllerV2: PKControllerBase
     public async Task<IActionResult> SystemGuildGet(string systemRef, ulong guild_id)
     {
         var system = await ResolveSystem(systemRef);
-        if (ContextFor(system) != LookupContext.ByOwner)
+        if (system == null)
+            throw Errors.SystemNotFound;
+
+        if (ContextFor(system) != LookupContext.ByOwner && !await IsGuildMember(guild_id))
             throw Errors.GenericMissingPermissions;
 
         var settings = await _repo.GetSystemGuild(guild_id, system.Id, false);
@@ -35,12 +38,14 @@ public class DiscordControllerV2: PKControllerBase
     public async Task<IActionResult> DoSystemGuildPatch(string systemRef, ulong guild_id, [FromBody] JObject data)
     {
         var system = await ResolveSystem(systemRef);
-        if (ContextFor(system) != LookupContext.ByOwner)
-            throw Errors.GenericMissingPermissions;
+        if (system == null)
+            throw Errors.SystemNotFound;
 
         var settings = await _repo.GetSystemGuild(guild_id, system.Id, false);
-        if (settings == null)
-            throw Errors.SystemGuildNotFound;
+        if (!await IsGuildMember(guild_id) && settings == null)
+            throw Errors.GenericMissingPermissions;
+        else if (settings == null)
+            settings = new();
 
         MemberId? memberId = null;
         if (data.ContainsKey("autoproxy_member"))
@@ -102,12 +107,13 @@ public class DiscordControllerV2: PKControllerBase
     [HttpGet("members/{memberRef}/guilds/{guild_id}")]
     public async Task<IActionResult> MemberGuildGet(string memberRef, ulong guild_id)
     {
-        var system = await ResolveSystem("@me");
         var member = await ResolveMember(memberRef);
         if (member == null)
             throw Errors.MemberNotFound;
-        if (member.System != system.Id)
-            throw Errors.NotOwnMemberError;
+
+        var system = await _repo.GetSystem(member.System);
+        if (ContextFor(system) != LookupContext.ByOwner && !await IsGuildMember(guild_id))
+            throw Errors.GenericMissingPermissions;
 
         var settings = await _repo.GetMemberGuild(guild_id, member.Id, false);
         if (settings == null)
@@ -119,16 +125,19 @@ public class DiscordControllerV2: PKControllerBase
     [HttpPatch("members/{memberRef}/guilds/{guild_id}")]
     public async Task<IActionResult> DoMemberGuildPatch(string memberRef, ulong guild_id, [FromBody] JObject data)
     {
-        var system = await ResolveSystem("@me");
         var member = await ResolveMember(memberRef);
         if (member == null)
             throw Errors.MemberNotFound;
-        if (member.System != system.Id)
+
+        var system = await _repo.GetSystem(member.System);
+        if (ContextFor(system) != LookupContext.ByOwner)
             throw Errors.NotOwnMemberError;
 
         var settings = await _repo.GetMemberGuild(guild_id, member.Id, false);
-        if (settings == null)
-            throw Errors.MemberGuildNotFound;
+        if (!await IsGuildMember(guild_id) && settings == null)
+            throw Errors.GenericMissingPermissions;
+        else if (settings == null)
+            settings = new();
 
         var patch = MemberGuildPatch.FromJson(data);
 
@@ -149,5 +158,22 @@ public class DiscordControllerV2: PKControllerBase
 
         var ctx = msg.System == null ? LookupContext.ByNonOwner : ContextFor(msg.System);
         return msg.ToJson(ctx, APIVersion.V2);
+    }
+
+    private async Task<bool> IsGuildMember(ulong guild_id)
+    {
+        if (authenticatedSystem == null)
+            return false;
+
+        if (authenticatedUser != null)
+            return await _redis.Connection.GetDatabase().HashExistsAsync($"user_guilds::{authenticatedUser}", guild_id.ToString());
+
+        var accounts = await _repo.GetSystemAccounts(authenticatedSystem.Value);
+
+        foreach (var a in accounts)
+            if (await _redis.Connection.GetDatabase().HashExistsAsync($"user_guilds::{a}", guild_id.ToString()))
+                return true;
+
+        return false;
     }
 }
