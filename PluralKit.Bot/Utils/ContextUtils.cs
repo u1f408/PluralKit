@@ -22,8 +22,14 @@ public static class ContextUtils
         return true;
     }
 
+    public static Task<bool> PromptYesNo(this Context ctx, string msgString, string acceptButton,
+                                               User? user = null, bool matchFlag = true)
+    {
+        return ctx.PromptYesNo(msgString, acceptButton, new[] { user ?? ctx.Author }, matchFlag);
+    }
+
     public static async Task<bool> PromptYesNo(this Context ctx, string msgString, string acceptButton,
-                                               User user = null, bool matchFlag = true)
+                                               User[] users, bool matchFlag = true)
     {
         if (matchFlag && ctx.MatchFlag("y", "yes")) return true;
 
@@ -31,7 +37,7 @@ public static class ContextUtils
         {
             Message = msgString,
             AcceptLabel = acceptButton,
-            User = user?.Id ?? ctx.Author.Id
+            Users = users.Select(x => x.Id).ToArray(),
         };
 
         await prompt.Run();

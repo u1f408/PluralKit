@@ -21,7 +21,9 @@ public class SystemLink
             throw Errors.AccountInOtherSystem(existingAccount);
 
         var msg = $"{account.Mention()}, please confirm the link.";
-        if (!await ctx.PromptYesNo(msg, "Confirm", account, false)) throw Errors.MemberLinkCancelled;
+        var res = await ctx.PromptYesNo(msg, "Confirm", new[] { account, ctx.Author }, false);
+        if (!res || actionedUser != account.Id) throw Errors.MemberLinkCancelled;
+
         await ctx.Repository.AddAccount(ctx.System.Id, account.Id);
         await ctx.Reply($"{Emojis.Success} Account linked to system.");
     }

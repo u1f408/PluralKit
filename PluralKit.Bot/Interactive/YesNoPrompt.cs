@@ -12,11 +12,12 @@ public class YesNoPrompt: BaseInteractive
 {
     public YesNoPrompt(Context ctx) : base(ctx)
     {
-        User = ctx.Author.Id;
+        Users = new[] { ctx.Author.Id };
     }
 
     public bool? Result { get; private set; }
-    public ulong? User { get; set; }
+    public ulong[] Users { get; set; }
+    public ulong? ActionedUser { get; set }
     public string Message { get; set; } = "Are you sure?";
 
     public string AcceptLabel { get; set; } = "OK";
@@ -30,22 +31,19 @@ public class YesNoPrompt: BaseInteractive
         AddButton(ctx => OnButtonClick(ctx, true), AcceptLabel, AcceptStyle);
         AddButton(ctx => OnButtonClick(ctx, false), CancelLabel, CancelStyle);
 
-        AllowedMentions mentions = null;
-
-        if (User != _ctx.Author.Id)
-            mentions = new AllowedMentions { Users = new[] { User!.Value } };
-
+        var mentions = new AllowedMentions { Users = Users };
         await Send(Message, mentions: mentions);
     }
 
     private async Task OnButtonClick(InteractionContext ctx, bool result)
     {
-        if (ctx.User.Id != User)
+        if (!Users.Select(u => u == ctx.User.Id).Any())
         {
             await Update(ctx);
             return;
         }
 
+        ActionedUser = ctx.User.Id;
         Result = result;
         await Finish(ctx);
     }
@@ -53,7 +51,7 @@ public class YesNoPrompt: BaseInteractive
     private bool MessagePredicate(MessageCreateEvent e)
     {
         if (e.ChannelId != _ctx.Channel.Id) return false;
-        if (e.Author.Id != User) return false;
+        if (!Users.Select(u => u == e.Author.Id).Any()) return false;
 
         var response = e.Content.ToLowerInvariant();
 
